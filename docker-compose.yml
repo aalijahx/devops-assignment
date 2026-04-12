@@ -1,51 +1,43 @@
 version: '3.8'
-
 services:
-  mysqldb:
+  # --- PART-I: Manual Deployment (Must be UP) ---
+  db-part1:
     image: mysql:5.7
-    restart: unless-stopped
-    env_file: ./.env
+    container_name: mysql_db_part1
     environment:
-      - MYSQL_ROOT_PASSWORD=$MYSQLDB_ROOT_PASSWORD
-      - MYSQL_DATABASE=$MYSQLDB_DATABASE
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: testdb
     ports:
-      - $MYSQLDB_LOCAL_PORT:$MYSQLDB_DOCKER_PORT
+      - "3306:3306"
     volumes:
-      - db:/var/lib/mysql
-    networks:
-      - backend
-  
-  bezkoder-api:
-    depends_on:
-      - mysqldb
-    image: aalijahx/node-api:v1
-    restart: unless-stopped
-    env_file: ./.env
+      - db_data_part1:/var/lib/mysql
+
+  api-part1:
+    image: aalijahx/bezkoder-api:latest
+    container_name: api_part1
     ports:
-      - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
-    environment:
-      - DB_HOST=mysqldb
-      - DB_USER=$MYSQLDB_USER
-      - DB_PASSWORD=$MYSQLDB_ROOT_PASSWORD
-      - DB_NAME=$MYSQLDB_DATABASE
-      - DB_PORT=$MYSQLDB_DOCKER_PORT
-      - CLIENT_ORIGIN=$CLIENT_ORIGIN
-    networks:
-      - backend
-      - frontend
-
-  bezkoder-ui:
+      - "8080:8080"
     depends_on:
-      - bezkoder-api
-    image: aalijahx/node-app-ui:v1
+      - db-part1
+
+  ui-part1:
+    image: aalijahx/bezkoder-ui:latest
+    container_name: ui_part1
     ports:
-      - $REACT_LOCAL_PORT:$REACT_DOCKER_PORT
-    networks:
-      - frontend  
+      - "6868:80"
 
-volumes: 
-  db:
+  # --- PART-II: Automation (Must be DOWN initially) ---
+  api-automation:
+    image: aalijahx/bezkoder-api:latest
+    container_name: api_part2
+    ports:
+      - "8082:8080"
 
-networks:
-  backend:
-  frontend:
+  ui-automation:
+    image: aalijahx/bezkoder-ui:latest
+    container_name: ui_part2
+    ports:
+      - "9000:80"
+
+volumes:
+  db_data_part1:
