@@ -1,55 +1,41 @@
 pipeline {
     agent any
-
     environment {
         DOCKER_USER = 'aalijahx'
-        // This ID must match the ID you gave in Jenkins Credentials
+        // Ensure you created 'docker-hub-creds' in Jenkins -> Manage Jenkins -> Credentials
         DOCKER_HUB_CREDS = credentials('docker-hub-creds')
     }
-
     stages {
         stage('Checkout') {
             steps {
-                // Pulls the latest code from your repo
                 checkout scm
             }
         }
-
-        stage('Build & Push API') {
+        stage('Build & Push Images') {
             steps {
                 script {
-                    def apiImage = docker.build("${DOCKER_USER}/bezkoder-api:latest", "./bezkoder-api")
+                    // Build & Push API
+                    sh "docker build -t ${DOCKER_USER}/bezkoder-api:latest ./bezkoder-api"
                     docker.withRegistry('', 'docker-hub-creds') {
-                        apiImage.push()
+                        sh "docker push ${DOCKER_USER}/bezkoder-api:latest"
+                    }
+                    // Build & Push UI (Baked with your EC2 IP)
+                    sh "docker build --build-arg REACT_APP_API_BASE_URL=http://13.60.224.71:6868/api -t ${DOCKER_USER}/bezkoder-ui:latest ./bezkoder-ui"
+                    docker.withRegistry('', 'docker-hub-creds') {
+                        sh "docker push ${DOCKER_USER}/bezkoder-ui:latest"
                     }
                 }
             }
         }
-
-        stage('Build & Push UI') {
+        stage('Deploy Part-II') {
             steps {
-                script {
-                    // We bake the EC2 IP into the UI build
-                    def uiImage = docker.build("${DOCKER_USER}/bezkoder-ui:latest", "--build-arg REACT_APP_API_BASE_URL=http://13.60.224.71:6868/api ./bezkoder-ui")
-                    docker.withRegistry('', 'docker-hub-creds') {
-                        uiImage.push()
-                    }
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                // Restarts the containers with the newly built images
-                sh 'docker compose down'
-                sh 'docker compose up -d'
+                // Specifically targeting only Part-II services
+                sh 'docker-compose up -d api-automation ui-automation'
             }
         }
     }
-
     post {
         always {
-            // Clean up images locally to save EC2 space
             sh 'docker image prune -f'
         }
     }
