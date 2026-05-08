@@ -14,7 +14,7 @@ def driver():
     
     driver = webdriver.Chrome(options=chrome_options)
     # Update this URL to your EC2 IP and port 
-    driver.get("http://13.60.224.71:8888") 
+    driver.get("http://13.60.224.71:9000") 
     yield driver
     driver.quit()
 
@@ -24,7 +24,7 @@ def test_title(driver):
     assert "bezkoder" in driver.title.lower()
 
 def test_url(driver):
-    assert "8888" in driver.current_url
+    assert "9000" in driver.current_url
 
 def test_navbar_brand_exists(driver):
     brand = driver.find_element(By.CLASS_NAME, "navbar-brand")
@@ -43,17 +43,17 @@ def test_navigation_to_add(driver):
     assert "/add" in driver.current_url
 
 def test_form_labels_title(driver):
-    driver.get("http://13.60.224.71:8888/add")
+    driver.get("http://13.60.224.71:9000/add")
     label = driver.find_element(By.XPATH, "//label[text()='Title']")
     assert label.is_displayed()
 
 def test_form_labels_desc(driver):
-    driver.get("http://13.60.224.71:8888/add")
+    driver.get("http://13.60.224.71:9000/add")
     label = driver.find_element(By.XPATH, "//label[text()='Description']")
     assert label.is_displayed()
 
 def test_submit_button_exists(driver):
-    driver.get("http://13.60.224.71:8888/add")
+    driver.get("http://13.60.224.71:9000/add")
     btn = driver.find_element(By.CLASS_NAME, "btn-success")
     assert btn.text == "Submit"
 
@@ -78,11 +78,11 @@ def test_footer_or_container_width(driver):
     assert container.size['width'] > 0
 
 def test_add_tutorial_placeholder(driver):
-    driver.get("http://13.60.224.71:8888/add")
+    driver.get("http://13.60.224.71:9000/add")
     title_input = driver.find_element(By.ID, "title")
     assert title_input.is_enabled()
 
 def test_back_to_list_from_add(driver):
-    driver.get("http://13.60.224.71:8888/add")
+    driver.get("http://13.60.224.71:9000/add")
     driver.find_element(By.LINK_TEXT, "Tutorials").click()
-    assert "/tutorials" in driver.current_url or driver.current_url.endswith("8888/")
+    assert "/tutorials" in driver.current_url or driver.current_url.endswith("9000/")
