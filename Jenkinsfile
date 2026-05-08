@@ -3,14 +3,13 @@ pipeline {
 
     environment {
         DOCKER_USER = 'aalijahx'
-        // Ensure this ID matches the one in Jenkins -> Manage Jenkins -> Credentials
         DOCKER_HUB_CREDS = credentials('docker-hub-creds')
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Fetches code from your GitHub repository [cite: 21, 61]
+                // Fetch code from the GitHub repository [cite: 61]
                 checkout scm
             }
         }
@@ -18,15 +17,15 @@ pipeline {
         stage('Build & Push Images') {
             steps {
                 script {
-                    // Build and Push Backend API
+                    // Build Backend
                     sh "docker build -t ${DOCKER_USER}/bezkoder-api:latest ./bezkoder-api"
+                    
+                    // Build UI with specific IP configuration
+                    sh "docker build --build-arg REACT_APP_API_BASE_URL=http://13.60.224.71:8082/api -t ${DOCKER_USER}/bezkoder-ui:latest ./bezkoder-ui"
+                    
+                    // Authenticate and push to Docker Hub
                     docker.withRegistry('', 'docker-hub-creds') {
                         sh "docker push ${DOCKER_USER}/bezkoder-api:latest"
-                    }
-                    
-                    // Build and Push UI with your specific EC2 IP
-                    sh "docker build --build-arg REACT_APP_API_BASE_URL=http://13.60.224.71:8082/api -t ${DOCKER_USER}/bezkoder-ui:latest ./bezkoder-ui"
-                    docker.withRegistry('', 'docker-hub-creds') {
                         sh "docker push ${DOCKER_USER}/bezkoder-ui:latest"
                     }
                 }
@@ -35,7 +34,7 @@ pipeline {
 
         stage('Deploy Part-II') {
             steps {
-                // Brings deployment up on port 9000 using Docker Compose 
+                // Ensure automation containers are launched [cite: 56, 61]
                 sh 'docker-compose up -d api-automation ui-automation'
             }
         }
@@ -43,11 +42,11 @@ pipeline {
         stage('Test Stage') {
             steps {
                 script {
-                    // Builds a containerized environment for Selenium tests 
+                    // Build the testing environment using the Dockerfile [cite: 61, 64]
                     sh "docker build -t selenium-tests -f Dockerfile.test ."
                     
-                    // Executes 15 Selenium test cases using headless Chrome [cite: 51, 54, 55]
-                    // --network host allows the container to access port 9000 on the EC2
+                    // Run 15 Selenium test cases in a containerized environment [cite: 51, 68]
+                    // --network host allows the test container to reach the app on port 9000
                     sh "docker run --network host selenium-tests"
                 }
             }
@@ -57,20 +56,21 @@ pipeline {
     post {
         always {
             script {
-                // Emails test results ONLY to the collaborator who made the push [cite: 77, 79]
-                // This will email you if you push, or qasimalik@gmail.com if he pushes
+                // Requirement: Email test results to the collaborator who made the push [cite: 77]
+                // Hardcoded recipient ensures qasimalik@gmail.com receives results [cite: 76, 77]
                 emailext (
                     subject: "Jenkins Test Results: ${currentBuild.fullDisplayName}",
                     body: """The automation pipeline has finished.
                              Result: ${currentBuild.result}
-                             Check the Jenkins dashboard for the 15 Selenium test results.""",
+                             Check the Jenkins dashboard for the 15 Selenium test case results.""",
                     recipientProviders: [
                         [$class: 'DevelopersRecipientProvider'], 
                         [$class: 'CulpritsRecipientProvider']
-                    ]
+                    ],
+                    to: 'aalijahmuhammad13@gmail.com'
                 )
             }
-            // Cleanup unused images to save disk space
+            // Cleanup to maintain EC2 disk space
             sh 'docker image prune -f'
         }
     }
